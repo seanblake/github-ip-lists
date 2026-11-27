@@ -1,0 +1,46 @@
+name: Update lists
+
+"on":
+  schedule:
+    - cron: "17 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: update-lists
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    permissions:
+      # Writes only to the `lists` branch; `main` is protected by a ruleset.
+      contents: write
+    steps:
+      - name: Check out main (the script)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          path: src
+          persist-credentials: false
+
+      - name: Check out lists branch (the published data)
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7.0.1
+        with:
+          ref: lists
+          path: lists
+
+      - name: Build list
+        run: python3 src/scripts/build_list.py lists
+
+      # status.json changes every run, so this commits daily. That keeps a
+      # visible heartbeat on the branch a consumer reads.
+      - name: Commit and push
+        working-directory: lists
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add github-git-v4.txt status.json
+          git commit -m "Update lists $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          git push origin HEAD:lists
