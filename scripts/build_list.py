@@ -65,7 +65,10 @@ def main() -> None:
     nets = fetch_git_v4()
     validate(nets, previous)
 
-    list_path.write_text("".join(f"{n}\n" for n in nets))
+    # UniFi Network 11 drops `/32` entries from a dynamic list (109 published,
+    # 55 loaded, exactly the non-/32 count), so single hosts go out bare.
+    lines = (str(n.network_address) if n.prefixlen == 32 else str(n) for n in nets)
+    list_path.write_text("".join(f"{line}\n" for line in lines))
     status = {
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
         "source": META_URL,
